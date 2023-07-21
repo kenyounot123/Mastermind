@@ -1,7 +1,7 @@
 #fix hit display and logic
 module Display
-  STAR =  "\u2606"
-  CIRCLE = "\u26AC"
+  BLACK_CIRCLE =  "\u25CB"
+  WHITE_CIRCLE = "\u25CF"
   def display_guess(guess)
     to_display = {
         'red' => 'Red'.red,
@@ -78,8 +78,10 @@ class PlayerCodeBreaker
       if @guess == @computer.computer_crafted_code
         @win = 1
         puts "You have correctly guessed the code! You win!"
+        puts "Do you want to play again? Enter Y/N "
       elsif @guess != @computer.computer_crafted_code && @turn == 12
         puts "You Lose! The computer generated code was #{display_guess(@computer.computer_crafted_code)}"
+        puts "Do you want to play again? Enter Y/N "
         break
       else
         @turn += 1
@@ -122,21 +124,28 @@ class PlayerCodeBreaker
   #showing hint logic
   def determine_guess(guess)
     symbol_display = []
-    previous_colors = []
+    p @computer.computer_crafted_code
+    unmatched_guess = []
+    unmatched_computer_code = []
+    #if there is a match , print out White cirlce to indicate that our color and index matches the computer's
+    #if there is no match, put the rest of our guesses in an array and the rest of the computer's code in the array
     guess.each_with_index do |color, index|
-      if @computer.computer_crafted_code.include?(color) && !previous_colors.include?(color)
-        hint = CIRCLE
-        previous_colors << color
-        if color == @computer.computer_crafted_code[index]
-          hint = STAR
-        end
-      end
+      puts "This is #{color} at #{index}"
       if color == @computer.computer_crafted_code[index]
-        hint = STAR
+        symbol_display << WHITE_CIRCLE
+      else
+        unmatched_guess << color
+        unmatched_computer_code << @computer.computer_crafted_code[index]
       end
-      symbol_display << hint
     end
-    return symbol_display 
+    #check the two arrays to see if the computer's code includes any of our unmatched guesses. if it does print out Black circle and delete the computer's index that contains our unmatched guess
+    unmatched_guess.each do |unmatched_color|
+      if unmatched_computer_code.include?(unmatched_color)
+        symbol_display << BLACK_CIRCLE
+        unmatched_computer_code.delete_at(unmatched_computer_code.index(unmatched_color))
+      end
+    end
+    p symbol_display
   end
   
 end
