@@ -1,8 +1,10 @@
-#fix hit display and logic
+#implement a 'quit' key so that when pressed it will exit the game
+#implement a way to play the game again depending if they type Y or N
+#After invalid input and then a valid input, does not display colors correctly
 module Display
   BLACK_CIRCLE =  "\u25CB"
   WHITE_CIRCLE = "\u25CF"
-  def display_guess(guess)
+  def display_color(guess)
     to_display = {
         'red' => 'Red'.red,
         'blue' => 'Blue'.blue,
@@ -19,6 +21,50 @@ module Display
 
   def display_hints(array_of_symbols)
     return "Clues: #{array_of_symbols.join('')}"
+  end
+
+  def different_color_inputs 
+    color_inputs = {
+      'r' => 'red',
+      'b' => 'blue',
+      'g' => 'green',
+      'p' => 'pink',
+      'c' => 'cyan',
+      'y' => 'yellow',
+    }
+  end
+
+end
+module Inputs
+  #makes sure player is inputing a valid word
+  ALL_VALID_INPUTS = ["red", "blue", "green", "pink", "cyan", "yellow", "r", "b", "g", "p", "c", "y"]
+  def validate_player_input(guess)
+    color_inputs = different_color_inputs
+    if valid_input(guess)
+      proper_guess = guess.map do |color|
+        color = color.downcase
+        if color.length == 1 
+          color = color_inputs[color]
+        end
+      end
+      guess = proper_guess
+    else
+      puts "This is not valid , please try again"
+      guess = gets.chomp.downcase.split(' ')
+      until valid_input(guess)
+        puts "Invalid. Please try again"
+        guess = gets.chomp.downcase.split(' ')
+      end
+    end
+    return guess
+  end
+
+  #makes sure user input is a color that is part of the game
+  def valid_input(input)
+    valid_color = input.all? { |word| ALL_VALID_INPUTS.include?(word) }
+    if (valid_color) && (input.length == 4)
+      return valid_color
+    end
   end
 
 end
@@ -42,10 +88,10 @@ end
 
 class PlayerCodeBreaker
   include Display
+  include Inputs
   def initialize
     @turn = 1
     @win = 0
-    @all_valid_inputs = ["red", "blue", "green", "pink", "cyan", "yellow", "r", "b", "g", "p", "c", "y"]
     @computer = ComputerCodeMaker.new()
     prompt_player
     player_guess
@@ -57,30 +103,19 @@ class PlayerCodeBreaker
     For example these are valid guesses:  Red Blue Purple Yellow => r b p y => R B P Y \n"
   end
 
-  def different_color_inputs 
-    color_inputs = {
-      'r' => 'red',
-      'b' => 'blue',
-      'g' => 'green',
-      'p' => 'pink',
-      'c' => 'cyan',
-      'y' => 'yellow',
-    }
-  end
-
   #the heart of the game
   def player_guess
     until @turn == 13 || @win == 1
       @guess = gets.chomp.downcase.split(' ')
-      validate_player_input(@guess)
-      puts display_guess(@guess)
+      @guess = validate_player_input(@guess)
+      puts display_color(@guess)
       puts display_hints(determine_guess(@guess))
       if @guess == @computer.computer_crafted_code
         @win = 1
         puts "You have correctly guessed the code! You win!"
         puts "Do you want to play again? Enter Y/N "
       elsif @guess != @computer.computer_crafted_code && @turn == 12
-        puts "You Lose! The computer generated code was #{display_guess(@computer.computer_crafted_code)}"
+        puts "You Lose! The computer generated code was #{display_color(@computer.computer_crafted_code)}"
         puts "Do you want to play again? Enter Y/N "
         break
       else
@@ -90,47 +125,15 @@ class PlayerCodeBreaker
     end
   end
 
-
-  #makes sure player is inputing a valid word
-  def validate_player_input(guess)
-    color_inputs = different_color_inputs
-    if valid_input(guess)
-      proper_guess = guess.map do |color|
-        color = color.downcase
-        if color.length == 1 
-          color = color_inputs[color]
-        end
-      end
-      @guess = proper_guess
-    else
-      puts "This is not a valid guess, please look at the example and type in a new guess correctly"
-      @guess = gets.chomp.downcase.split(' ')
-      until valid_input(@guess)
-        puts "Invalid guess. Please try again"
-        @guess = gets.chomp.downcase.split(' ')
-      end
-    end
-  end
-
-  #makes sure user input is a color that is part of the game
-  def valid_input(input)
-    valid_color = input.all? { |word| @all_valid_inputs.include?(word) }
-    if (valid_color) && (input.length == 4)
-      return valid_color
-    end
-  end
-
-
   #showing hint logic
   def determine_guess(guess)
     symbol_display = []
-    p @computer.computer_crafted_code
     unmatched_guess = []
     unmatched_computer_code = []
     #if there is a match , print out White cirlce to indicate that our color and index matches the computer's
     #if there is no match, put the rest of our guesses in an array and the rest of the computer's code in the array
     guess.each_with_index do |color, index|
-      puts "This is #{color} at #{index}"
+      
       if color == @computer.computer_crafted_code[index]
         symbol_display << WHITE_CIRCLE
       else
@@ -145,7 +148,7 @@ class PlayerCodeBreaker
         unmatched_computer_code.delete_at(unmatched_computer_code.index(unmatched_color))
       end
     end
-    p symbol_display
+    symbol_display
   end
   
 end
@@ -211,6 +214,37 @@ module Instructions
   end
 end
 
+
+class ComputerSolver
+  
+  include Display
+  include Inputs
+  COLORS = 6
+  CODE_LENGTH = 4
+  def initialize
+    @computer_turn = 1
+    @computer_colors = ["red", "blue", "green", "pink", "cyan", "yellow"]
+  end
+
+  def generate_all_possible_codes
+    @all_possible_codes = COLORS ** CODE_LENGTH
+  end
+
+  def first_guess
+    return [computer_colors[1],computer_colors[1],computer_colors[1],computer_colors[1]]
+
+
+end
+
+class PlayerMaker 
+  include Display
+  include Inputs
+  def initialize
+    @player_code = validate_player_input(gets.chomp.downcase.split(' '))
+    puts "#{display_color(@player_code)} => This is your code for the computer to break!"
+  end
+end
+
 class MastermindGame
   include Instructions
   def initialize 
@@ -226,17 +260,19 @@ class MastermindGame
     end
     if user_input == '1' 
       puts "You are the code BREAKER"
-      player_breaker = PlayerCodeBreaker.new()
+      PlayerCodeBreaker.new()
     end
-    #if userinput is 1 => player will be the code breaker
-      #initialize the computer() object so that it will pick a random code for us to break
-      #initialize the player() object so that it will prompt us for our 4 color code guess 
-      #every turn, our guess will be displayed and then the hints will be displayed
-      #if our 4 code input matches the code within 12 attempts then it is our win
-
-    #if userinput is 2 => player wll be the code maker
+    if user_input == '2'
+      puts "You are the code MAKER"
+      PlayerMaker.new()
+    end
   end
 end
 
 
 MastermindGame.new()
+    #if userinput is 1 => player will be the code breaker
+      #initialize the computer() object so that it will pick a random code for us to break
+      #initialize the player() object so that it will prompt us for our 4 color code guess 
+      #every turn, our guess will be displayed and then the hints will be displayed
+      #if our 4 code input matches the code within 12 attempts then it is our win
