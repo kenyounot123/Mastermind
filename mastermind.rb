@@ -1,6 +1,5 @@
-#implement a 'quit' key so that when pressed it will exit the game
+
 #implement a way to play the game again depending if they type Y or N
-#After invalid input and then a valid input, does not display colors correctly
 module Display
   BLACK_CIRCLE =  "\u25CB"
   WHITE_CIRCLE = "\u25CF"
@@ -40,6 +39,14 @@ module Inputs
   ALL_VALID_INPUTS = ["red", "blue", "green", "pink", "cyan", "yellow", "r", "b", "g", "p", "c", "y"]
   def validate_player_input(guess)
     color_inputs = different_color_inputs
+    if guess[0] == 'q'
+      puts "Exiting game ..."
+      exit
+    end
+    until valid_input(guess)
+      puts "Invalid. Please try again"
+      guess = gets.chomp.downcase.split(' ')
+    end
     if valid_input(guess)
       proper_guess = guess.map do |color|
         color = color.downcase
@@ -48,13 +55,6 @@ module Inputs
         end
       end
       guess = proper_guess
-    else
-      puts "This is not valid , please try again"
-      guess = gets.chomp.downcase.split(' ')
-      until valid_input(guess)
-        puts "Invalid. Please try again"
-        guess = gets.chomp.downcase.split(' ')
-      end
     end
     return guess
   end
@@ -67,6 +67,15 @@ module Inputs
     end
   end
 
+  def play_again_input(yes_or_no)
+    if yes_or_no.downcase == 'y' 
+      MastermindGame.new()
+    end
+    if yes_or_no.downcase == 'n'
+      puts "Thank you for playing!"
+      exit
+    end
+  end
 end
 
 class ComputerCodeMaker
@@ -99,7 +108,7 @@ class PlayerCodeBreaker
 
   def prompt_player
     puts "It is now Turn #{@turn}
-    Please type in your guess seperated by a space.
+    Please type in your guess seperated by a space. Press 'q' to exit
     For example these are valid guesses:  Red Blue Purple Yellow => r b p y => R B P Y \n"
   end
 
@@ -114,15 +123,17 @@ class PlayerCodeBreaker
         @win = 1
         puts "You have correctly guessed the code! You win!"
         puts "Do you want to play again? Enter Y/N "
+        play_again_input(gets.chomp)
       elsif @guess != @computer.computer_crafted_code && @turn == 12
         puts "You Lose! The computer generated code was #{display_color(@computer.computer_crafted_code)}"
         puts "Do you want to play again? Enter Y/N "
-        break
+        play_again_input(gets.chomp)
       else
         @turn += 1
         prompt_player
       end
     end
+    
   end
 
   #showing hint logic
@@ -221,17 +232,114 @@ class ComputerSolver
   include Inputs
   COLORS = 6
   CODE_LENGTH = 4
+
   def initialize
     @computer_turn = 1
     @computer_colors = ["red", "blue", "green", "pink", "cyan", "yellow"]
+    @player_code = PlayerMaker.new().player_code
+    knuth_algorithm
   end
 
   def generate_all_possible_codes
-    @all_possible_codes = COLORS ** CODE_LENGTH
+    @all_possible_codes = @computer_colors.repeated_permutation(CODE_LENGTH).to_a
   end
 
   def first_guess
-    return [computer_colors[1],computer_colors[1],computer_colors[1],computer_colors[1]]
+    return [@computer_colors[0], @computer_colors[0], @computer_colors[1], @computer_colors[1]]
+  end
+  def determine_computer_guess(guess)
+    symbol_display = []
+    unmatched_guess = []
+    unmatched_player_code = []
+    #if there is a match , print out White cirlce to indicate that our color and index matches the computer's
+    #if there is no match, put the rest of our guesses in an array and the rest of the computer's code in the array
+    guess.each_with_index do |color, index|
+      if color == @player_code[index]
+        symbol_display << WHITE_CIRCLE
+      else
+        unmatched_guess << color
+        unmatched_player_code << @player_code[index]
+      end
+    end
+    #check the two arrays to see if the computer's code includes any of our unmatched guesses. if it does print out Black circle and delete the computer's index that contains our unmatched guess
+    unmatched_guess.each do |unmatched_color|
+      if unmatched_player_code.include?(unmatched_color)
+        symbol_display << BLACK_CIRCLE
+        unmatched_player_code.delete_at(unmatched_player_code.index(unmatched_color))
+      end
+    end
+    symbol_display
+  end
+
+  def get_clues(symbol_array)
+    white_circle = 0
+    black_circle = 0
+    symbol_array.each do |symbol|
+      if symbol == WHITE_CIRCLE
+        white_circle += 1
+      end
+      if symbol == BLACK_CIRCLE
+        black_circle += 1
+      end
+    end
+    return [white_circle, black_circle]
+  end
+
+  def knuth_algorithm
+    max_turns = 5
+    possible_combinations = generate_all_possible_codes
+    computer_guesses = []
+    computer_win = 0
+    #Loop until computer figures out the player code
+    while computer_guesses.size <= 5 || computer_win = 1
+      if computer_guesses.empty?
+        current_guess = first_guess
+      # if it is not the first guess then the next guess will a guess based on the minmax strategy
+      else
+        current_guess = next_guess(possible_combinations)
+      end
+      
+      puts "Computer guesses: #{display_color(current_guess)}"
+      puts "#{display_hints(determine_computer_guess(current_guess))}"
+      if current_guess == @player_code
+        puts "The computer cracked your secret code!"
+        computer_win += 1
+        break
+      end
+      possible_combinations.reject! do |combo|
+        get_clues(determine_computer_guess(combo)) != get_clues(determine_computer_guess(current_guess)) 
+      end
+      computer_guesses << current_guess
+    end
+  end
+
+  #min max strategy 
+  def next_guess(combinations_remaining)
+    best_guess = combinations_remaining.first
+    min_max_remaining = Float::INFINITY
+
+    combinations_remaining.each do |guess|
+      remaining_possibilities = Hash.new(0)
+
+      combinations_remaining.each do |combination|
+        clues = get_clues(determine_computer_guess(combination))
+        remaining_possibilities[clues] += 1
+      end
+
+      max_remaining = remaining_possibilities.values.max
+
+      if max_remaining < min_max_remaining
+        best_guess = guess
+        min_max_remaining = max_remaining
+      end
+    end
+    puts "#{best_guess} is the best guess"
+
+    best_guess
+  end
+
+  def compare(guess_one, guess_two)
+  end
 
 
 end
@@ -239,6 +347,7 @@ end
 class PlayerMaker 
   include Display
   include Inputs
+  attr_accessor :player_code
   def initialize
     @player_code = validate_player_input(gets.chomp.downcase.split(' '))
     puts "#{display_color(@player_code)} => This is your code for the computer to break!"
@@ -264,7 +373,7 @@ class MastermindGame
     end
     if user_input == '2'
       puts "You are the code MAKER"
-      PlayerMaker.new()
+      ComputerSolver.new()
     end
   end
 end
