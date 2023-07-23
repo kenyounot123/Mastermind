@@ -1,5 +1,3 @@
-
-#implement a way to play the game again depending if they type Y or N
 module Display
   BLACK_CIRCLE =  "\u25CB"
   WHITE_CIRCLE = "\u25CF"
@@ -68,6 +66,10 @@ module Inputs
   end
 
   def play_again_input(yes_or_no)
+    until yes_or_no.downcase == 'y' || yes_or_no.downcase == 'n'
+      puts "Please enter Y or N"
+      yes_or_no = gets.chomp
+    end
     if yes_or_no.downcase == 'y' 
       MastermindGame.new()
     end
@@ -237,7 +239,7 @@ class ComputerSolver
     @computer_turn = 1
     @computer_colors = ["red", "blue", "green", "pink", "cyan", "yellow"]
     @player_code = PlayerMaker.new().player_code
-    knuth_algorithm
+    swaszek_strategy
   end
 
   def generate_all_possible_codes
@@ -247,18 +249,18 @@ class ComputerSolver
   def first_guess
     return [@computer_colors[0], @computer_colors[0], @computer_colors[1], @computer_colors[1]]
   end
-  def determine_computer_guess(guess)
+  def determine_computer_guess(guess, previous_guess)
     symbol_display = []
     unmatched_guess = []
     unmatched_player_code = []
     #if there is a match , print out White cirlce to indicate that our color and index matches the computer's
     #if there is no match, put the rest of our guesses in an array and the rest of the computer's code in the array
     guess.each_with_index do |color, index|
-      if color == @player_code[index]
+      if color == previous_guess[index]
         symbol_display << WHITE_CIRCLE
       else
         unmatched_guess << color
-        unmatched_player_code << @player_code[index]
+        unmatched_player_code << previous_guess[index]
       end
     end
     #check the two arrays to see if the computer's code includes any of our unmatched guesses. if it does print out Black circle and delete the computer's index that contains our unmatched guess
@@ -271,7 +273,7 @@ class ComputerSolver
     symbol_display
   end
 
-  def get_clues(symbol_array)
+  def get_score(symbol_array)
     white_circle = 0
     black_circle = 0
     symbol_array.each do |symbol|
@@ -285,62 +287,41 @@ class ComputerSolver
     return [white_circle, black_circle]
   end
 
-  def knuth_algorithm
+  def swaszek_strategy
     max_turns = 5
     possible_combinations = generate_all_possible_codes
     computer_guesses = []
-    computer_win = 0
-    #Loop until computer figures out the player code
-    while computer_guesses.size <= 5 || computer_win = 1
+  
+    # Loop until the computer figures out the player code
+    while computer_guesses.size <= 5
       if computer_guesses.empty?
         current_guess = first_guess
-      # if it is not the first guess then the next guess will a guess based on the minmax strategy
       else
-        current_guess = next_guess(possible_combinations)
+        current_guess = refine_guess(computer_guesses.last, get_score(determine_computer_guess(computer_guesses.last, @player_code)), possible_combinations)
       end
       
       puts "Computer guesses: #{display_color(current_guess)}"
-      puts "#{display_hints(determine_computer_guess(current_guess))}"
+      puts "#{display_hints(determine_computer_guess(current_guess, @player_code))}"
+  
       if current_guess == @player_code
         puts "The computer cracked your secret code!"
-        computer_win += 1
-        break
-      end
-      possible_combinations.reject! do |combo|
-        get_clues(determine_computer_guess(combo)) != get_clues(determine_computer_guess(current_guess)) 
+        puts "Do you want to play again? Y/N"
+        play_again_input(gets.chomp)
       end
       computer_guesses << current_guess
     end
   end
 
-  #min max strategy 
-  def next_guess(combinations_remaining)
-    best_guess = combinations_remaining.first
-    min_max_remaining = Float::INFINITY
-
-    combinations_remaining.each do |guess|
-      remaining_possibilities = Hash.new(0)
-
-      combinations_remaining.each do |combination|
-        clues = get_clues(determine_computer_guess(combination))
-        remaining_possibilities[clues] += 1
-      end
-
-      max_remaining = remaining_possibilities.values.max
-
-      if max_remaining < min_max_remaining
-        best_guess = guess
-        min_max_remaining = max_remaining
-      end
+  #This method compares the score of the previous guess with all the possible combinations. The score is the amount of [white circle hint, black circle hint].
+  #if the score of the previous guess is not equal to the score of the possible combinations then it will delete that combo from the list of possible combinations.
+  #this will keep lowering the amount of elements in possible_combinations until the combo is found.
+  def refine_guess(previous_guess, score, possible_combinations)
+    possible_combinations.reject! do |combo| 
+      get_score(determine_computer_guess(combo, previous_guess)) != score
     end
-    puts "#{best_guess} is the best guess"
-
-    best_guess
+    next_guess = possible_combinations.first
+    next_guess
   end
-
-  def compare(guess_one, guess_two)
-  end
-
 
 end
 
