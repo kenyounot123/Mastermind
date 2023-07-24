@@ -215,9 +215,9 @@ module Instructions
 
     The hints are going to be either \u2606 or \u26AC. 
 
-    \u2606 means that one of the colors are correct and also in the correct position
+    \u25CF means that one of the colors are correct and also in the correct position
 
-    \u26AC means that one of the colors are correct but not in the correct position
+    \u25CB means that one of the colors are correct but not in the correct position
   
     Good luck!!
 
@@ -354,6 +354,7 @@ class MastermindGame
     end
     if user_input == '2'
       puts "You are the code MAKER"
+      puts "Create a code for the compute to break. Type in 4 colors separated by a space. For example r r b g."
       ComputerSolver.new()
     end
   end
